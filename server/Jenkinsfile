@@ -82,4 +82,9 @@ pipeline {
             }
         }
     }
+    post{
+        always{
+            junit testResults: 'server/test-results/junit.xml', 
+        }
+    }
 }

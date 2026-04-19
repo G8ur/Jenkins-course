@@ -34,6 +34,7 @@ pipeline {
             
                 sh '''
                     echo "Test stage"
+                    cd server
                     test -f build/index.html
                     npm test
                 '''

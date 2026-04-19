@@ -2,8 +2,7 @@ pipeline {
     agent any
 
     options {
-        // CRITICAL: This tells Jenkins NOT to try pulling the Git code immediately.
-        // If we don't skip this, Git crashes before we have a chance to clean the folder.
+        // CRITICAL: Tells Jenkins NOT to pull the Git code immediately.
         skipDefaultCheckout()
     }
 
@@ -11,16 +10,14 @@ pipeline {
         stage('Self-Heal (Wipe Workspace)') {
             agent {
                 docker {
-                    image 'alpine' // Very small, fast image just for cleaning
+                    image 'alpine' 
                     reuseNode true
-                    // We use root ONE LAST TIME exclusively to delete the stubborn files
                     args '-u root' 
                 }
             }
             steps {
                 sh '''
                     echo "Force-cleaning the workspace of any root-owned files..."
-                    # Wipe everything including hidden git and npm folders
                     rm -rf ./*
                     rm -rf ./.git
                     rm -rf ./.npm-cache
@@ -33,21 +30,15 @@ pipeline {
                 docker {
                     image 'node:18-alpine'
                     reuseNode true
-                    // REMOVED: args "-u root:root"
-                    // We now run as the standard Jenkins user so files are safe to delete.
                 }
             }
             steps {
-                // Now that the workspace is 100% clean, pull the code safely
+                // Safely pull code into the clean workspace
                 checkout scm
                 
                 sh '''
-                    # CRITICAL FIX: Direct npm cache to a local folder 
-                    # so it doesn't try to write to the protected /.npm root directory
                     export npm_config_cache="$(pwd)/.npm-cache"
-                    
                     cd server
-                    
                     npm ci
                     npm run build
                     ls -la
@@ -60,7 +51,6 @@ pipeline {
                 docker {
                     image 'node:18-alpine'
                     reuseNode true
-                    // No root arguments needed here either
                 }
             }
             steps {
@@ -69,7 +59,6 @@ pipeline {
                     export npm_config_cache="$(pwd)/.npm-cache"
                     cd server
                     
-                    # Verify the build output exists
                     if [ -f build/index.html ] || [ -d dist ]; then
                         echo "Build file successfully found!"
                     else
@@ -77,14 +66,16 @@ pipeline {
                         exit 1
                     fi
                     
-                    # npm test --if-present
+                    # You MUST run your tests to generate the junit.xml file!
+                    npm test
                 '''
             }
         }
     }
-    post{
-        always{
-            junit testResults: 'server/test-results/junit.xml', 
+    post {
+        always {
+            // FIXED: Removed the trailing comma and added allowEmptyResults
+            junit testResults: 'server/test-results/junit.xml', allowEmptyResults: true
         }
     }
 }

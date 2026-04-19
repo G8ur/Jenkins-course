@@ -2,13 +2,11 @@ pipeline {
     agent any
 
     stages {
-        stage('w/o docker') {
-            {
-                agent{
-                    docker{
-                        image 'node:18-alpine'
-                        reuseNode true
-                    }
+        stage('With Docker Node') {
+            agent {
+                docker {
+                    image 'node:18-alpine'
+                    reuseNode true
                 }
             }
             steps {
@@ -16,8 +14,9 @@ pipeline {
                     ls -la 
                     node --version
                     npm --version
-                    npm i 
-                    node --watch index.js
+                    npm i
+                    # Removed --watch because it will hang the pipeline
+                    node index.js 
                 '''
             }
         }

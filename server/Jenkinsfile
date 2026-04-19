@@ -7,28 +7,27 @@ pipeline {
                 docker {
                     image 'node:18-alpine'
                     reuseNode true
-                    // 1. Set the working directory to the Jenkins workspace inside the container
-                    // 2. Explicitly mount the workspace to ensure the container sees it
-                    args "-u root -w ${WORKSPACE} -v ${WORKSPACE}:${WORKSPACE}"
+                    /* REMOVED the -v mount to fix the "Duplicate mount" error.
+                       Kept -u root to ensure permission to write node_modules.
+                    */
+                    args '-u root'
                 }
             }
             steps {
-                
+                // Pull code from GitHub into the host workspace
                 checkout scm
                 
                 sh '''
-                    echo "Current Path: $(pwd)"
+                    echo "Current directory: $(pwd)"
                     ls -la 
                     
                     node --version
                     npm --version
                     
-                    # Ensure we are in the directory containing package.json
+                    # If package.json exists, install and build
                     if [ -f package.json ]; then
-                        # use npm install if you don't have a package-lock.json
-                        npm ci 
+                        npm install
                         npm run build --if-present
-                        ls -la
                     else
                         echo "Error: package.json not found in $(pwd)"
                         exit 1

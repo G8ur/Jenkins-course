@@ -1,35 +1,32 @@
 pipeline {
-    agent any
+    agent none // Do not pick a node globally
 
     stages {
         stage('Build') {
             agent {
                 docker {
                     image 'node:18-alpine'
-                    reuseNode true
-                    /* REMOVED the -v mount to fix the "Duplicate mount" error.
-                       Kept -u root to ensure permission to write node_modules.
-                    */
+                    // We remove reuseNode and add a custom mount path
                     args '-u root'
                 }
             }
             steps {
-                // Pull code from GitHub into the host workspace
+                // 1. Force the code to pull inside the current container context
                 checkout scm
                 
                 sh '''
                     echo "Current directory: $(pwd)"
+                    
+                    # 2. Check if files exist
                     ls -la 
                     
-                    node --version
-                    npm --version
-                    
-                    # If package.json exists, install and build
                     if [ -f package.json ]; then
                         npm install
                         npm run build --if-present
                     else
-                        echo "Error: package.json not found in $(pwd)"
+                        echo "--- DEBUGGING ---"
+                        echo "Looking for package.json in the whole system..."
+                        find / -name package.json 2>/dev/null | head -n 5
                         exit 1
                     fi
                 '''

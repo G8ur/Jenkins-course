@@ -1,0 +1,45 @@
+pipeline {
+    agent none
+
+    stages {
+        stage('Build') {
+            agent {
+                docker {
+                    image 'node:18-alpine'
+                    reuseNode true
+                    args "-u root:root"
+                }
+            }
+            steps {
+                checkout scm
+                sh '''
+                    ls -la 
+                    node --version
+                    npm --version
+                    cd server
+                    npm ci
+                    npm run build
+                    ls -la
+                '''
+            }
+        }
+        stage('Test') {
+            agent {
+                docker {
+                    image 'node:18-alpine'
+                    reuseNode true
+                    args "-u root:root"
+                }
+            }
+            steps {
+            
+                sh '''
+                    echo "Test stage"
+                    cd server
+                    test -f build/index.html
+                    npm test
+                '''
+            }
+        }
+    }
+}

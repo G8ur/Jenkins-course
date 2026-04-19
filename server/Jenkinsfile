@@ -7,18 +7,32 @@ pipeline {
                 docker {
                     image 'node:18-alpine'
                     reuseNode true
-                    args '-u root'
+                    // 1. Set the working directory to the Jenkins workspace inside the container
+                    // 2. Explicitly mount the workspace to ensure the container sees it
+                    args "-u root -w ${WORKSPACE} -v ${WORKSPACE}:${WORKSPACE}"
                 }
             }
             steps {
+                
                 checkout scm
+                
                 sh '''
+                    echo "Current Path: $(pwd)"
                     ls -la 
+                    
                     node --version
                     npm --version
-                    npm ci
-                    npm run build
-                    ls -la
+                    
+                    # Ensure we are in the directory containing package.json
+                    if [ -f package.json ]; then
+                        # use npm install if you don't have a package-lock.json
+                        npm ci 
+                        npm run build --if-present
+                        ls -la
+                    else
+                        echo "Error: package.json not found in $(pwd)"
+                        exit 1
+                    fi
                 '''
             }
         }

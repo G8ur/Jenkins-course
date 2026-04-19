@@ -1,0 +1,15 @@
+pipeline {
+    agent any
+
+    stages {
+        stage('w/o docker') {
+            steps {
+                sh '''
+                echo "without docker"
+                ls -la
+                touch container_no.txt
+                '''
+            }
+        }
+    }
+}

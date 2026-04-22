@@ -78,6 +78,7 @@ pipeline {
                     // FIX 1: Use the standard Debian-based image instead of Alpine
                     image 'node:18' 
                     reuseNode true
+                    args '-v /etc/passwd:/etc/passwd:ro'
                 }
             }
             steps {

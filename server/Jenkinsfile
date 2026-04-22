@@ -72,25 +72,29 @@ pipeline {
             }
         }
 
-
-        stage('Deploy') {
+      stage('Deploy') {
             agent {
                 docker {
-                    image 'node:18-alpine'
+                    // FIX 1: Use the standard Debian-based image instead of Alpine
+                    image 'node:18' 
                     reuseNode true
                 }
             }
             steps {
                 sh '''
-                export npm_config_cache="$(pwd)/.npm-cache"
-                cd server
-                npm i netlify-cli 
-                node_modules/.bin/netlify --version
-
+                    export npm_config_cache="$(pwd)/.npm-cache"
+                    
+                    # FIX 2: Give Netlify a valid HOME directory in the workspace 
+                    # so it doesn't try to look up the missing user's home path
+                    export HOME="$(pwd)"
+                    
+                    cd server
+                    npm i netlify-cli 
+                    node_modules/.bin/netlify --version
                 '''
             }
         }
-          
+        
     }
     post {
         always {

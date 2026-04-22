@@ -82,6 +82,7 @@ pipeline {
             }
             steps {
                 sh '''
+                export npm_config_cache="$(pwd)/.npm-cache"
                 cd server
                 npm i netlify-cli 
                 node_modules/.bin/netlify --version

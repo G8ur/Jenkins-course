@@ -1,6 +1,11 @@
 pipeline {
     agent any
 
+    environment{
+        NETLIFY_SITE_ID = 'a771b8f1-7670-48f3-a3ee-e3b92f13fecf'
+        NETLIFY_AUTH_TOKEN = credentials('netlify-auth-token')
+    }
+
     options {
         // CRITICAL: Tells Jenkins NOT to pull the Git code immediately.
         skipDefaultCheckout()
@@ -92,6 +97,9 @@ pipeline {
                     cd server
                     npm i netlify-cli 
                     node_modules/.bin/netlify --version
+                    node_modules/.bin/netlify status
+
+                    
                 '''
             }
         }

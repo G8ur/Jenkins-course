@@ -105,10 +105,12 @@ pipeline {
         }
         
     }
-    post {
+    post { 
+        node{
         always {
             // FIXED: Removed the trailing comma and added allowEmptyResults
             junit testResults: 'server/test-results/junit.xml', allowEmptyResults: true
         }
+    }
     }
 }

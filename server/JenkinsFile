@@ -1,0 +1,111 @@
+pipeline {
+    agent any
+
+    environment{
+        NETLIFY_SITE_ID = 'a771b8f1-7670-48f3-a3ee-e3b92f13fecf'
+        NETLIFY_AUTH_TOKEN = credentials('netlify-auth-token')
+    }
+
+    options {
+        // CRITICAL: Tells Jenkins NOT to pull the Git code immediately.
+        skipDefaultCheckout()
+    }
+
+    stages {
+        stage('Self-Heal (Wipe Workspace)') {
+            agent {
+                docker {
+                    image 'alpine' 
+                    reuseNode true
+                    args '-u root' 
+                }
+            }
+            steps {
+                sh '''
+                    echo "Force-cleaning the workspace of any root-owned files..."
+                    rm -rf ./*
+                    rm -rf ./.git
+                    rm -rf ./.npm-cache
+                '''
+            }
+        }
+
+        stage('Build') {
+            agent {
+                docker {
+                    image 'node:18-alpine'
+                    reuseNode true
+                }
+            }
+            steps {
+                // Safely pull code into the clean workspace
+                checkout scm
+                
+                sh '''
+                    export npm_config_cache="$(pwd)/.npm-cache"
+                    cd server
+                    npm ci
+                    npm run build
+                    ls -la
+                '''
+            }
+        }
+
+        stage('Test') {
+            agent {
+                docker {
+                    image 'node:18-alpine'
+                    reuseNode true
+                }
+            }
+            steps {
+                sh '''
+                    echo "Test stage"
+                    export npm_config_cache="$(pwd)/.npm-cache"
+                    cd server
+                    
+                    if [ -f build/index.html ] || [ -d dist ]; then
+                        echo "Build file successfully found!"
+                    else
+                        echo "Error: Build output missing!"
+                        exit 1
+                    fi
+                    
+                    # You MUST run your tests to generate the junit.xml file!
+                    npm test
+                '''
+            }
+            // THE FIX: The post block is now safely inside the Test stage
+            post {
+                always {
+                    junit testResults: 'server/test-results/junit.xml', allowEmptyResults: true
+                }
+            }
+        }
+
+        stage('Deploy') {
+            agent {
+                docker {
+                    // FIX 1: Use the standard Debian-based image instead of Alpine
+                    image 'node:18' 
+                    reuseNode true
+                    args '-v /etc/passwd:/etc/passwd:ro'
+                }
+            }
+            steps {
+                sh '''
+                    export npm_config_cache="$(pwd)/.npm-cache"
+                    
+                    # FIX 2: Give Netlify a valid HOME directory in the workspace 
+                    # so it doesn't try to look up the missing user's home path
+                    export HOME="$(pwd)"
+                    
+                    cd server
+                    npm i netlify-cli 
+                    node_modules/.bin/netlify --version
+                    node_modules/.bin/netlify status
+                '''
+            }
+        }
+    }
+}
